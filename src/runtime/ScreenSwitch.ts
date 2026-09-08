@@ -3,18 +3,18 @@
 
 import { Middleware } from "polymatic";
 
-export interface ScreenConfig {
-  name: string;
-  [key: string]: any;
-}
+import { type MainContext, type ScreenConfig } from "../model";
 
 export type ScreenMap = Record<string, Middleware<any>>;
 
-export interface ScreenSwitchContext {
-  screen: ScreenConfig;
-}
-
-export class ScreenSwitch extends Middleware<ScreenSwitchContext> {
+/**
+ * Swaps in the middleware that runs the named screen, and publishes the choice
+ * on `context.screen` so the shell knows which page to draw.
+ *
+ * The home screen is a Preact page (shell/HomePage) with nothing behind it, so
+ * it maps to an empty middleware here.
+ */
+export class ScreenSwitch extends Middleware<MainContext> {
   screens: ScreenMap;
 
   constructor(screens: ScreenMap) {
@@ -31,9 +31,7 @@ export class ScreenSwitch extends Middleware<ScreenSwitchContext> {
       console.error("Unknown screen", name);
       return;
     }
-    this.setContext((context) => {
-      context.screen = config;
-    });
+    this.context.screen.value = config;
     this._swap([middleware]);
   };
 }

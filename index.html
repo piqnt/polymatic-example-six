@@ -4,14 +4,71 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport"
-    content="user-scalable=no, width=device-width, height=device-height, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0" />
+    content="user-scalable=no, width=device-width, height=device-height, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, viewport-fit=cover" />
   <meta name="theme-color" content="#222" />
   <meta name="color-scheme" content="dark" />
-  <title>Six 006 - Polymatic Example</title>
+  <title>Hex-a-Lot - Piqnt</title>
+  <style>
+    :root {
+      --six-font: "Special Elite", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      overflow: hidden;
+      background: #222;
+      color: #fff;
+      font-family: var(--six-font);
+      -webkit-font-smoothing: antialiased;
+      overscroll-behavior: none;
+    }
+
+    #board {
+      position: fixed;
+      inset: 0;
+      overflow: hidden;
+      /* every gesture in here is a game gesture - dragging tiles across the
+         board. Without this a long press pops iOS's selection handles over it. */
+      -webkit-user-select: none;
+      user-select: none;
+      -webkit-touch-callout: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* stage-js mounts onto this by id (see Stage.mount in runtime/Loader) */
+    #stage {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      touch-action: none;
+    }
+
+    /* the preact hud, over the board: transparent to pointers except where a
+       control opts back in */
+    #ui-root {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+    }
+  </style>
 </head>
 
 <body>
-  <script type="module" src="./index"></script>
+  <div id="board">
+    <canvas id="stage"></canvas>
+    <div id="ui-root"></div>
+  </div>
+
+  <script type="module" src="./src/index.tsx"></script>
 </body>
 
 </html>

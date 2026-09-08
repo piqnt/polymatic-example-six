@@ -4,23 +4,17 @@
 import * as Stage from "stage-js";
 import { Dataset, Driver, Memo, Middleware } from "polymatic";
 
-import { type MainContext } from "./Main";
-import { type Tile, type Cell } from "./Hex";
-import { Format } from "./Format";
+import { type MainContext, type Tile, type Cell } from "../model";
 
 const CELL_SIZE = 29;
 
-export class PlayScreen extends Middleware<MainContext> {
+/**
+ * The hex board itself. Everything that used to be drawn around it - score,
+ * clock, next tiles, the reset and home buttons - is the Preact hud now
+ * (shell/PlayHud), fed by runtime/HudManager.
+ */
+export class BoardView extends Middleware<MainContext> {
   container: Stage.Node;
-
-  resetButton: Stage.Anim;
-  homeButton: Stage.Sprite;
-  nextTiles: Stage.Monotype;
-  scoreTotal: Stage.Monotype;
-  scoreAdded: Stage.Monotype;
-  timer: Stage.Monotype;
-  lastScore: Stage.Monotype;
-  topScore: Stage.Monotype;
 
   hexBoard: Stage.Node;
   hexTiles: Stage.Node;
@@ -48,84 +42,6 @@ export class PlayScreen extends Middleware<MainContext> {
   createComponents() {
     if (this.container) return false;
     this.container = Stage.maximize();
-
-    this.resetButton = Stage.anim("reset", 1);
-    this.resetButton.appendTo(this.container);
-    this.resetButton.pin({
-      alignX: 1,
-      alignY: 1,
-      offsetX: -5,
-      offsetY: -5,
-    });
-    this.resetButton.on(Stage.POINTER_CLICK, () => this.emit("user-reset-play"));
-
-    this.homeButton = Stage.sprite("burger");
-    this.homeButton.appendTo(this.container);
-    this.homeButton.pin({
-      alignX: 0,
-      alignY: 1,
-      offsetX: 5,
-      offsetY: -5,
-    });
-    this.homeButton.on(Stage.POINTER_CLICK, () => this.emit("set-screen", { name: "home" }));
-
-    this.nextTiles = Stage.monotype("tile");
-    this.nextTiles.appendTo(this.container);
-    this.nextTiles.pin({
-      alignX: 1,
-      alignY: 0,
-      offsetX: -9,
-      offsetY: 10,
-      scale: 0.4,
-    });
-
-    this.scoreTotal = Stage.monotype("digit");
-    this.scoreTotal.appendTo(this.container);
-    this.scoreTotal.pin({
-      alignX: 0,
-      alignY: 0,
-      offsetX: 9,
-      offsetY: 8,
-      scale: 1.1,
-    });
-
-    this.scoreAdded = Stage.monotype("digit");
-    this.scoreAdded.appendTo(this.container);
-    this.scoreAdded.pin({
-      alignX: 0.5,
-      alignY: 0,
-      offsetX: 0,
-      offsetY: 8,
-      scale: 0.9,
-    });
-
-    this.timer = Stage.monotype("digit");
-    this.timer.appendTo(this.container);
-    this.timer.pin({
-      alignX: 1,
-      alignY: 0,
-      handleX: 0,
-      offsetX: -50,
-      offsetY: 8,
-      scale: 1.1,
-    });
-
-    this.lastScore = Stage.monotype("digit");
-    this.lastScore.appendTo(this.container);
-    this.lastScore.pin({
-      align: 0.5,
-      scale: 1.4,
-    });
-
-    this.topScore = Stage.monotype("digit");
-    this.topScore.appendTo(this.container);
-    this.topScore.pin({
-      alignX: 0.5,
-      alignY: 1,
-      offsetX: 0,
-      offsetY: -14,
-      scale: 0.8,
-    });
 
     this.hexBoard = Stage.component();
     this.hexBoard.attr("spy", true);
@@ -169,53 +85,10 @@ export class PlayScreen extends Middleware<MainContext> {
     return true;
   }
 
-  gameStateMemo = Memo.init();
-
   handleFrameRender = () => {
     const status = this.context.status;
-    if (this.gameStateMemo.update(status.state)) {
-      if (status.state === "playing") {
-        this.resetButton.stop(0);
-        this.lastScore.hide();
-      } else if (status.state === "gameover") {
-        this.resetButton.play();
-        this.lastScore.show();
-        const isTopScore = status.currentScore > 0 && (!status.topScore || status.currentScore > status.topScore);
-        this.lastScore.value(status.currentScore + (isTopScore ? "S" : ""));
-      }
-
-      if (status?.topScore) {
-        this.topScore.value(status.topScore + "s");
-        this.topScore.show();
-      } else {
-        this.topScore.hide();
-      }
-    }
-
-    this.scoreTotal.value(status.currentScore);
-
-    if (status.newScore) {
-      const value = (status.newScore > 0 ? "+" : "") + status.newScore;
-      this.scoreAdded.value(value);
-      this.scoreAdded.show();
-    } else {
-      this.scoreAdded.hide();
-    }
-
-    if (typeof status.timer === "number" && status.timer >= 0) {
-      this.timer.value(Format.time(status.timer));
-      this.timer.show();
-    } else {
-      this.timer.hide();
-    }
-
     const hex = this.context.hex;
-    if (hex.nextTiles?.length) {
-      this.nextTiles.value(hex.nextTiles.join(""));
-      this.nextTiles.show();
-    } else {
-      this.nextTiles.hide();
-    }
+
     this.hexBoard.show();
 
     if (status.state === "playing") {

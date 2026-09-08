@@ -3,8 +3,8 @@
 
 import { Middleware } from "polymatic";
 
-import { type MainContext } from "./Main";
-import { Tile, cellAt, assignTile } from "./Hex";
+import { type MainContext } from "../model";
+import { Tile, cellAt, assignTile } from "../model";
 
 interface GameV2 {
   score?: number;
@@ -27,7 +27,7 @@ export class Save extends Middleware<MainContext> {
   }
 
   handleGameStart = () => {
-    const mode = this.context.screen.mode;
+    const mode = this.context.screen.value.mode;
     const status = this.context.status;
     const highScore = this.loadHighScore(mode);
     if (highScore > 0) {
@@ -36,7 +36,7 @@ export class Save extends Middleware<MainContext> {
   };
 
   handleGameEnd = () => {
-    const mode = this.context.screen.mode;
+    const mode = this.context.screen.value.mode;
     const status = this.context.status;
     if (status.currentScore > 0 && status.currentScore > status.topScore) {
       this.saveHighScore(mode, status.currentScore);
@@ -64,7 +64,7 @@ export class Save extends Middleware<MainContext> {
   };
 
   saveGame = () => {
-    const mode = this.context.screen.mode;
+    const mode = this.context.screen.value.mode;
     const key = GAME_V2 + mode;
 
     try {
@@ -86,7 +86,7 @@ export class Save extends Middleware<MainContext> {
   };
 
   loadGame = () => {
-    const mode = this.context.screen.mode;
+    const mode = this.context.screen.value.mode;
     const key = GAME_V2 + mode;
 
     try {
@@ -117,7 +117,7 @@ export class Save extends Middleware<MainContext> {
   };
 
   dropGame = () => {
-    const mode = this.context.screen.mode;
+    const mode = this.context.screen.value.mode;
     const key = GAME_V2 + mode;
 
     localStorage.removeItem(key);
