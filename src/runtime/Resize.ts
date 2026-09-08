@@ -4,7 +4,7 @@
 import * as Stage from "stage-js";
 import { Middleware } from "polymatic";
 
-import { type MainContext } from "./Main";
+import { type MainContext } from "../model";
 
 export class Resize extends Middleware<MainContext> {
   background: Stage.Sprite;

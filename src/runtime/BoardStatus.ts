@@ -3,19 +3,8 @@
 
 import { Middleware } from "polymatic";
 
-import { type MainContext } from "./Main";
+import { type MainContext, Status } from "../model";
 import { type FrameLoopEvent } from "./FrameLoop";
-
-export class Status {
-  state: "idle" | "playing" | "gameover" = "idle";
-
-  topScore = 0;
-
-  currentScore = 0;
-  newScore = 0;
-
-  timer: number | null;
-}
 
 export class BoardStatus extends Middleware<MainContext> {
   constructor() {

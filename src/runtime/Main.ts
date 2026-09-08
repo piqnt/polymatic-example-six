@@ -1,36 +1,25 @@
 // Copyright (c) Ali Shakiba
 // Licensed under the MIT License
 
-import * as Stage from "stage-js";
 import { Middleware } from "polymatic";
 
+import { type MainContext } from "../model";
 import { BoardFlip } from "./BoardFlip";
 import { BoardSlide } from "./BoardSlide";
 import { BoardJump } from "./BoardJump";
-import { PlayScreen } from "./PlayScreen";
-import { HomeScreen } from "./HomeScreen";
 import { Loader } from "./Loader";
 import { Resize } from "./Resize";
-
-import { type Status } from "./BoardStatus";
-import { type Hex } from "./Hex";
 import { ScreenSwitch } from "./ScreenSwitch";
 import { FrameLoop } from "./FrameLoop";
 import { Save } from "./Save";
+import { BoardView } from "./BoardView";
+import { HudManager } from "./HudManager";
 
-export interface MainContext {
-  stage?: Stage.Root;
-  layout?: Stage.Node;
-
-  hex: Hex;
-  status: Status;
-
-  screen: {
-    name: string;
-    mode?: number;
-  };
-}
-
+/**
+ * The runtime. It owns the hex board on the Stage.js canvas; the home menu and
+ * the play hud are the shell's (see shell/App), and the two meet at the signals
+ * on MainContext.
+ */
 export class Main extends Middleware<MainContext> {
   constructor() {
     super();
@@ -46,21 +35,24 @@ export class Main extends Middleware<MainContext> {
         "play-1": new FlipScreen(),
         "play-2": new SlideScreen(),
         "play-3": new JumpScreen(),
-        "home": new HomeScreen(),
-      })
+        // the home menu is a Preact page with nothing running behind it
+        "home": new Middleware(),
+      }),
     );
   }
 
-  handleLoaded() {
+  handleLoaded = () => {
+    this.context.ready.value = true;
     this.emit("set-screen", { name: "home" });
-  }
+  };
 }
 
 export class FlipScreen extends Middleware<MainContext> {
   constructor() {
     super();
     this.use(new BoardFlip());
-    this.use(new PlayScreen());
+    this.use(new BoardView());
+    this.use(new HudManager());
   }
 }
 
@@ -68,7 +60,8 @@ export class SlideScreen extends Middleware<MainContext> {
   constructor() {
     super();
     this.use(new BoardSlide());
-    this.use(new PlayScreen());
+    this.use(new BoardView());
+    this.use(new HudManager());
   }
 }
 
@@ -76,6 +69,7 @@ export class JumpScreen extends Middleware<MainContext> {
   constructor() {
     super();
     this.use(new BoardJump());
-    this.use(new PlayScreen());
+    this.use(new BoardView());
+    this.use(new HudManager());
   }
 }

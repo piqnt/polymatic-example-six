@@ -3,7 +3,7 @@
 
 import { Middleware } from "polymatic";
 
-import { type MainContext } from "./Main";
+import { type MainContext } from "../model";
 
 import { BoardStatus } from "./BoardStatus";
 import {
@@ -17,8 +17,8 @@ import {
   setupHex,
   teardownHex,
   type Point,
-} from "./Hex";
-import { runTask, stepTimeline, timeoutTask } from "./Timeline";
+} from "../model";
+import { runTask, stepTimeline, timeoutTask } from "../model";
 import { type FrameLoopEvent } from "./FrameLoop";
 
 const TIME = 60;
