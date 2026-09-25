@@ -34,9 +34,10 @@ export class BoardStatus extends Middleware<MainContext> {
     }
   };
 
-  handleGameStart = () => {
+  /** a restored game starts from its saved score */
+  handleGameStart = (ev?: { score?: number }) => {
     this.context.status.state = "playing";
-    this.context.status.currentScore = 0;
+    this.context.status.currentScore = ev?.score ?? 0;
     // this.context.status.timer = -1;
   };
 

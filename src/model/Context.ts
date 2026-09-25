@@ -8,6 +8,7 @@ import { type Hex } from "./Hex";
 import { Status } from "./Status";
 import { type ScreenConfig } from "./Screen";
 import { HudData } from "./Hud";
+import { type GameStore } from "./GameStore";
 
 /**
  * Global context, shared between the runtime and the shell.
@@ -24,6 +25,9 @@ export class MainContext {
 
   hex: Hex;
   status: Status;
+
+  /** saved games, see runtime/Save */
+  store: GameStore | null = null;
 
   // --- shell facing state ---
 

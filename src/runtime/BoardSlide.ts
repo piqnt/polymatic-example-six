@@ -18,12 +18,15 @@ import {
   teardownHex,
   type Point,
 } from "../model";
-import { runTask, stepTimeline, timeoutTask } from "../model";
+import { Clock } from "../model";
 import { type FrameLoopEvent } from "./FrameLoop";
 
 const TIME = 60;
 
 export class BoardSlide extends Middleware<MainContext> {
+  /** paces the animated sequences; waits are dropped on reset, so those sequences stop */
+  clock = new Clock();
+
   pointDown: Point | null;
   cellDown: Cell | null;
   dirLock: number | null;
@@ -47,15 +50,17 @@ export class BoardSlide extends Middleware<MainContext> {
   }
 
   handleActivate() {
+    this.clock.clear();
     this.context.hex = new Hex();
     this.startGame();
   }
 
   handleFrameUpdate = (ev: FrameLoopEvent) => {
-    stepTimeline(this.context.hex, ev.dt);
+    this.clock.step(ev.dt);
   };
 
   handleReset = () => {
+    this.clock.clear();
     teardownHex(this.context.hex);
     this.startGame();
   };
@@ -67,13 +72,14 @@ export class BoardSlide extends Middleware<MainContext> {
   startGame = () => {
     this.cancelPointer();
     setupHex(this.context.hex, 3);
-    runTask(this.context.hex, [timeoutTask(() => fillUp(this.context.hex), 150)]);
+    this.refill();
     this.emit("board-set-timer", TIME);
     this.emit("game-start");
     // this.status.setScore(this.cells.length);
   };
 
   endGame() {
+    this.clock.clear();
     this.cancelPointer();
     teardownHex(this.context.hex);
     this.emit("game-end");
@@ -128,17 +134,32 @@ export class BoardSlide extends Middleware<MainContext> {
     this.dirLock = null;
   };
 
-  matchBoard = () => {
+  /** New tiles fill the board, after a moment */
+  refill = async () => {
+    await this.clock.wait(150);
+    fillUp(this.context.hex);
+  };
+
+  /** counts cascades, so an older one can tell it was superseded */
+  sequence = 0;
+
+  /**
+   * Remove rows of three, refill, and repeat while new rows form. Refilling acts on the whole
+   * board, so a newer cascade covers this one's gaps too, and this one stops at its next step.
+   */
+  matchBoard = async (sequence?: number) => {
     const removed = matchRow(this.context.hex, 3);
-    if (removed) {
-      // let t = Date.now() - this.status.start;
-      // let time = removed * 20 * 1000 / (t / 1000 + 30);
-      // this.emit("extend-timer", time);
-      this.emit("board-add-score", removed /*, !this.cellDown */);
-      runTask(this.context.hex, [
-        timeoutTask(() => fillUp(this.context.hex), 150),
-        timeoutTask(() => this.matchBoard(), 150),
-      ]);
-    }
+    if (!removed) return;
+    sequence ??= ++this.sequence;
+    // let t = Date.now() - this.status.start;
+    // let time = removed * 20 * 1000 / (t / 1000 + 30);
+    // this.emit("extend-timer", time);
+    this.emit("board-add-score", removed /*, !this.cellDown */);
+    await this.clock.wait(150);
+    if (sequence !== this.sequence) return;
+    fillUp(this.context.hex);
+    await this.clock.wait(150);
+    if (sequence !== this.sequence) return;
+    this.matchBoard(sequence);
   };
 }

@@ -3,7 +3,7 @@
 
 import { Middleware } from "polymatic";
 
-import { type MainContext } from "../model";
+import { type GameStore, type MainContext } from "../model";
 import { Tile, cellAt, assignTile } from "../model";
 
 interface GameV2 {
@@ -15,16 +15,26 @@ interface GameV2 {
 const HIGHSCORE_V2 = "six-top-score-v2-";
 const GAME_V2 = "six-save-game-v2-";
 
-export class Save extends Middleware<MainContext> {
+/** Keeps top scores, and is the store for games in progress */
+export class Save extends Middleware<MainContext> implements GameStore {
   constructor() {
     super();
+    this.on("activate", this.handleActivate);
+    this.on("deactivate", this.handleDeactivate);
+
     this.on("game-start", this.handleGameStart);
     this.on("game-end", this.handleGameEnd);
-
-    this.on("disk-save-game", this.saveGame);
-    this.on("disk-load-game", this.loadGame);
-    this.on("disk-remove-game", this.dropGame);
   }
+
+  handleActivate = () => {
+    this.context.store = this;
+  };
+
+  handleDeactivate = () => {
+    if (this.context.store === this) {
+      this.context.store = null;
+    }
+  };
 
   handleGameStart = () => {
     const mode = this.context.screen.value.mode;
@@ -92,10 +102,9 @@ export class Save extends Middleware<MainContext> {
     try {
       const stringGame = localStorage.getItem(key);
       // console.debug(game);
-      if (!stringGame) return false;
+      if (!stringGame) return null;
 
       const json: GameV2 = JSON.parse(stringGame);
-      this.context.status.currentScore = json.score;
       json.cells.forEach((data) => {
         const cell = cellAt(this.context.hex, data.i, data.j, true);
         if (data.color) {
@@ -109,11 +118,11 @@ export class Save extends Middleware<MainContext> {
 
       this.context.hex.inited = true;
 
-      return true;
+      return { score: json.score ?? 0 };
     } catch (e) {
       console.log(e);
     }
-    return false;
+    return null;
   };
 
   dropGame = () => {

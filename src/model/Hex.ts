@@ -64,8 +64,6 @@ export class Hex {
   inited = false;
   locked = false;
   nextTiles?: string[];
-
-  timeline = [];
 }
 
 export const setupHex = (hex: Hex, radius: number) => {

@@ -2,7 +2,7 @@
 // Licensed under the MIT License
 
 import * as Stage from "stage-js";
-import { Dataset, Driver, Memo, Middleware } from "polymatic";
+import { Binder, Driver, Memo, Middleware } from "polymatic";
 
 import { type MainContext, type Tile, type Cell } from "../model";
 
@@ -134,7 +134,7 @@ export class BoardView extends Middleware<MainContext> {
     },
   });
 
-  binder = Dataset.create<Cell | Tile>({
+  binder = Binder.create<Cell | Tile>({
     key: (obj) => obj.key,
     drivers: [this.renderCell, this.renderTile],
   });

@@ -19,12 +19,15 @@ import {
   emptyCells,
   fillSome,
 } from "../model";
-import { runTask, stepTimeline, timeoutTask } from "../model";
+import { Clock } from "../model";
 import { type FrameLoopEvent } from "./FrameLoop";
 
 const SAVE_KEY = "colorlines";
 
 export class BoardJump extends Middleware<MainContext> {
+  /** paces the animated sequences; waits are dropped on reset, so those sequences stop */
+  clock = new Clock();
+
   src: Cell;
 
   constructor() {
@@ -41,34 +44,36 @@ export class BoardJump extends Middleware<MainContext> {
   }
 
   handleActivate() {
+    this.clock.clear();
     this.context.hex = new Hex();
-    this.emit("disk-load-game");
-    // delay for loading game from disk
-    runTask(this.context.hex, [timeoutTask(() => this.startGame(), 50)]);
+    this.startGame();
   }
 
   handleFrameUpdate = (ev: FrameLoopEvent) => {
-    stepTimeline(this.context.hex, ev.dt);
+    this.clock.step(ev.dt);
   };
 
   handleReset = () => {
+    this.clock.clear();
     teardownHex(this.context.hex);
-    this.emit("disk-remove-game");
+    this.context.store?.dropGame();
     this.startGame();
   };
 
+  /** Continue the saved game if there is one, or start a new one */
   startGame = () => {
-    // check if already inited (loaded from disk)
-    if (!this.context.hex.inited) {
+    const saved = this.context.store?.loadGame();
+    if (!saved) {
       setupHex(this.context.hex, 4);
       this.addTiles();
     }
-    this.emit("game-start");
+    this.emit("game-start", { score: saved?.score ?? 0 });
   };
 
   endGame() {
+    this.clock.clear();
     teardownHex(this.context.hex);
-    this.emit("disk-remove-game");
+    this.context.store?.dropGame();
     this.emit("game-end");
   }
 
@@ -106,7 +111,7 @@ export class BoardJump extends Middleware<MainContext> {
     }
   };
 
-  handlePointerUp = (point: Point) => {
+  handlePointerUp = async (point: Point) => {
     if (this.context.hex.locked) return;
 
     if (!this.src) return;
@@ -120,12 +125,13 @@ export class BoardJump extends Middleware<MainContext> {
 
     // if (this.findPath(this.src, cell)) {
     relocateTile(this.context.hex, cell, this.src, false);
-    runTask(this.context.hex, [timeoutTask(() => this.matchBoard(true), 200)]);
     // }
     this.src = null;
+    await this.clock.wait(200);
+    this.matchBoard(true);
   };
 
-  matchBoard = (userMove?: boolean) => {
+  matchBoard = async (userMove?: boolean) => {
     const matchedNumber = matchRow(this.context.hex, 4);
 
     if (matchedNumber) {
@@ -137,19 +143,22 @@ export class BoardJump extends Middleware<MainContext> {
 
     if (!empty.length) {
       // game over
-      runTask(this.context.hex, [timeoutTask(() => this.endGame(), 500)]);
+      await this.clock.wait(500);
+      this.endGame();
     } else if (!filled.length) {
       // board is empty
-      runTask(this.context.hex, [timeoutTask(() => this.addTiles(), matchedNumber ? 300 : 0)]);
+      await this.clock.wait(matchedNumber ? 300 : 0);
+      this.addTiles();
     } else if (userMove && !matchedNumber) {
       // user made a move, but no match
-      runTask(this.context.hex, [timeoutTask(() => this.addTiles(), 300)]);
+      await this.clock.wait(300);
+      this.addTiles();
     } else {
-      this.emit("disk-save-game");
+      this.context.store?.saveGame();
     }
   };
 
-  addTiles = () => {
+  addTiles = async () => {
     let score = this.context.status.currentScore;
     let n: number;
     if (score < 60) {
@@ -166,6 +175,7 @@ export class BoardJump extends Middleware<MainContext> {
       n = 8;
     }
     fillSome(this.context.hex, n, true);
-    runTask(this.context.hex, [timeoutTask(() => this.matchBoard(), 400)]);
+    await this.clock.wait(400);
+    this.matchBoard();
   };
 }

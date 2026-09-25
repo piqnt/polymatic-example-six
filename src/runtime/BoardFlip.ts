@@ -18,12 +18,15 @@ import {
   unassignTile,
   type Point,
 } from "../model";
-import { runTask, stepTimeline, timeoutTask } from "../model";
+import { Clock } from "../model";
 import { type FrameLoopEvent } from "./FrameLoop";
 
 const TIME = 60;
 
 export class BoardFlip extends Middleware<MainContext> {
+  /** paces the animated sequences; waits are dropped on reset, so those sequences stop */
+  clock = new Clock();
+
   constructor() {
     super();
     this.on("activate", this.handleActivate);
@@ -39,17 +42,19 @@ export class BoardFlip extends Middleware<MainContext> {
   }
 
   handleActivate = () => {
+    this.clock.clear();
     this.context.hex = new Hex();
     this.startGame();
   };
 
   handleReset = () => {
+    this.clock.clear();
     teardownHex(this.context.hex);
     this.startGame();
   };
 
   handleFrameUpdate = (ev: FrameLoopEvent) => {
-    stepTimeline(this.context.hex, ev.dt);
+    this.clock.step(ev.dt);
   };
 
   handleTimeover = () => {
@@ -64,6 +69,7 @@ export class BoardFlip extends Middleware<MainContext> {
   };
 
   endGame = () => {
+    this.clock.clear();
     teardownHex(this.context.hex);
     this.emit("game-end");
   };
@@ -80,13 +86,27 @@ export class BoardFlip extends Middleware<MainContext> {
       matched.forEach((cell) => {
         unassignTile(this.context.hex, cell, true);
       });
-      runTask(this.context.hex, [
-        timeoutTask(() => collapseHex(this.context.hex, 1), 50, ""),
-        timeoutTask(() => fillUp(this.context.hex), 150, ""),
-      ]);
+      this.collapseAndFill();
     } else if (matched.length == 1) {
       this.emit("board-add-score", -10);
       matched[0].tile.color = Color.x;
     }
+  };
+
+  /** counts collapse-and-fill sequences, so an older one can tell it was superseded */
+  sequence = 0;
+
+  /**
+   * Tiles fall into the gaps, then new tiles fill the board. Both act on the whole board, so a
+   * newer tap's sequence covers this one's gaps too, and this one stops at its next step.
+   */
+  collapseAndFill = async () => {
+    const sequence = ++this.sequence;
+    await this.clock.wait(50);
+    if (sequence !== this.sequence) return;
+    collapseHex(this.context.hex, 1);
+    await this.clock.wait(150);
+    if (sequence !== this.sequence) return;
+    fillUp(this.context.hex);
   };
 }
