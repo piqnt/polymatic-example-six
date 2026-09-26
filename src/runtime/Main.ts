@@ -7,13 +7,13 @@ import { type MainContext } from "../model";
 import { BoardFlip } from "./BoardFlip";
 import { BoardSlide } from "./BoardSlide";
 import { BoardJump } from "./BoardJump";
+import { BoardView } from "./BoardView";
+import { HudManager } from "./HudManager";
 import { Loader } from "./Loader";
 import { Resize } from "./Resize";
 import { ScreenSwitch } from "./ScreenSwitch";
 import { FrameLoop } from "./FrameLoop";
 import { Save } from "./Save";
-import { BoardView } from "./BoardView";
-import { HudManager } from "./HudManager";
 
 /**
  * The runtime. It owns the hex board on the Stage.js canvas; the home menu and
@@ -31,13 +31,10 @@ export class Main extends Middleware<MainContext> {
     this.use(new Resize());
     this.use(new Save());
     this.use(
-      new ScreenSwitch({
-        "play-1": new FlipScreen(),
-        "play-2": new SlideScreen(),
-        "play-3": new JumpScreen(),
-        // the home menu is a Preact page with nothing running behind it
-        "home": new Middleware(),
-      }),
+      new ScreenSwitch()
+        .case("play-1", new FlipScreen())
+        .case("play-2", new SlideScreen())
+        .case("play-3", new JumpScreen()),
     );
   }
 
